@@ -154,47 +154,79 @@ function formatChatbotResponse(text) {
   
   let formatted = text;
   
-  // Step 1: Remove leading spaces from headings - they must start at line beginning
+  // Step 1: Fix broken headings FIRST - Critical fix for "## C\nEO" -> "## CEO"
+  // Fix single letter followed by newline and more text (like "C\nEO")
+  formatted = formatted.replace(/##\s+([A-Z])\n([A-Z][a-z]+)/g, '## $1$2');
+  formatted = formatted.replace(/##\s+([A-Z])\n([A-Z]+)/g, '## $1$2');
+  formatted = formatted.replace(/##\s+([A-Z][a-z])\n([A-Z][a-z]+)/g, '## $1$2');
+  
+  // Fix broken words in headings (any letter followed by newline and more letters)
+  formatted = formatted.replace(/##\s+([A-Za-z]+)\n([A-Z][a-z]+)/g, '## $1 $2');
+  formatted = formatted.replace(/##\s+([A-Z])\n([a-z]+)/g, '## $1$2');
+  
+  // Step 2: Fix headings broken across lines (like "## C\nEO Email")
+  formatted = formatted.replace(/##\s+([A-Z])\n([A-Z]+)\s+([A-Z][a-z]+)/g, '## $1$2 $3');
+  formatted = formatted.replace(/##\s+([A-Z])\n([A-Z]+)\n\n([A-Z][a-z]+)/g, '## $1$2 $3');
+  
+  // Step 3: Fix headings with numbers broken (like "## 1.\nService Name")
+  formatted = formatted.replace(/##\s+(\d+\.)\s*\n\s*([A-Z][^\n]+)/g, '## $1 $2');
+  
+  // Step 4: Remove leading spaces from headings
   formatted = formatted.replace(/^\s+##/gm, '##');
   
-  // Step 2: Fix text before headings (like "Core Services" before ##)
+  // Step 5: Fix text before headings (like "Core Services" before ##)
   formatted = formatted.replace(/^([A-Z][a-z]+\s+[A-Z][a-z]+)\s*##/gm, '## $1');
   formatted = formatted.replace(/^([A-Z][a-z]+)\s*##/gm, '## $1');
   
-  // Step 3: Fix headings that are crammed together on same line
-  formatted = formatted.replace(/##\s+([^#\n]+?)\s+##\s+/g, '## $1\n\n## ');
-  
-  // Step 4: Ensure each ## heading is on its own line with spacing before it
+  // Step 6: Ensure each ## heading is on its own line with blank line before
   formatted = formatted.replace(/([^\n])\s*##\s+/g, '$1\n\n## ');
   
-  // Step 5: Fix text that appears on same line as heading
+  // Step 7: Fix headings that are crammed together
+  formatted = formatted.replace(/##\s+([^#\n]+?)\s+##\s+/g, '## $1\n\n## ');
+  
+  // Step 8: Fix text that appears on same line as heading - move to next line
   formatted = formatted.replace(/##\s+([^\n]+?)([A-Za-z0-9])/g, '## $1\n$2');
   
-  // Step 6: Fix bullet points - ensure each is on separate line, starting at beginning
-  formatted = formatted.replace(/([^\n])\s*•\s*/g, '$1\n• ');
-  formatted = formatted.replace(/^\s*•\s*/gm, '• ');
-  formatted = formatted.replace(/\s+•\s+/g, '\n• ');
+  // Step 9: Fix bullet points - ensure each is on separate line
+  formatted = formatted.replace(/([^\n])\s*•\s*/g, '$1\n   • ');
+  formatted = formatted.replace(/^\s*•\s*/gm, '   • ');
+  formatted = formatted.replace(/\s+•\s+/g, '\n   • ');
   
-  // Step 7: Ensure numbered sections have proper breaks
+  // Step 10: Ensure numbered sections have proper breaks
   formatted = formatted.replace(/([^\n])##\s+(\d+\.)/g, '$1\n\n## $2');
   
-  // Step 8: Ensure proper spacing between sections
+  // Step 11: Fix broken words across lines (like "CEO\nEmail" -> "CEO Email")
+  formatted = formatted.replace(/([A-Z]+)\n([A-Z][a-z]+)/g, '$1 $2');
+  formatted = formatted.replace(/([A-Z][a-z]+)\n([A-Z][a-z]+)/g, '$1 $2');
+  formatted = formatted.replace(/([a-z])\n([a-z])/g, '$1 $2');
+  
+  // Step 12: Fix broken service names (like "Book valuations &\nviewings")
+  formatted = formatted.replace(/([a-z])\s*&\s*\n\s*([a-z])/g, '$1 & $2');
+  
+  // Step 13: Ensure proper spacing between sections
   formatted = formatted.replace(/##\s+([^\n]+)\n\s*##/g, '## $1\n\n##');
   
-  // Step 9: Fix contact information formatting
+  // Step 14: Fix contact information formatting
   formatted = formatted.replace(/(Email:|Phone:|Website:|Business Hours:|Response Time:)\s*/g, '\n$1       ');
   
-  // Step 10: Clean up multiple consecutive newlines (max 2)
+  // Step 15: Clean up multiple consecutive newlines (max 2)
   formatted = formatted.replace(/\n{4,}/g, '\n\n\n');
   formatted = formatted.replace(/\n{3,}/g, '\n\n');
   
-  // Step 11: Ensure bullets are properly indented (3 spaces) and start clean
+  // Step 16: Ensure bullets are properly indented (3 spaces)
   formatted = formatted.replace(/^•\s+/gm, '   • ');
   
-  // Step 12: Final cleanup - ensure headings start at beginning, no leading spaces
+  // Step 17: Final cleanup - ensure headings start at beginning
   formatted = formatted.replace(/^\s+##/gm, '##');
   
-  // Step 13: Trim and ensure clean start
+  // Step 18: Ensure each service section is properly separated
+  formatted = formatted.replace(/(##\s+\d+\.\s+[^\n]+)\n([^•\n#])/g, '$1\n\n$2');
+  
+  // Step 19: Final pass - fix any remaining broken headings
+  formatted = formatted.replace(/##\s+([A-Z])\n([A-Z]+)/g, '## $1$2');
+  formatted = formatted.replace(/##\s+([A-Z][a-z])\n([A-Z][a-z]+)/g, '## $1$2');
+  
+  // Step 20: Trim and ensure clean start
   formatted = formatted.trim();
   
   return formatted;
@@ -234,20 +266,44 @@ app.post('/api/chatbot', async (req, res) => {
     console.log('Calling OpenAI API...');
     
     // PropertyReply Comprehensive System Prompt - MUST USE THIS INFORMATION
-    const systemPrompt = `You are PropertyReply's official AI chatbot assistant. You MUST answer ALL questions using ONLY the information provided below about PropertyReply. You are NOT a generic AI - you are PropertyReply's company chatbot.
+    const systemPrompt = `You are PropertyReply's official AI chatbot assistant. Answer questions DIRECTLY, CONCISELY, and using ONLY the information provided below.
 
-CRITICAL INSTRUCTIONS:
-- You MUST use the information below to answer questions
-- You MUST provide PropertyReply's contact information when asked
-- You MUST NOT say you don't have access to information - you have ALL the information below
-- You MUST answer as PropertyReply's representative
-- You MUST be helpful, professional, and friendly
-- YOU MUST BE CONCISE AND FOCUSED - Keep responses short, clear, and to the point
-- YOU MUST NOT write long, detailed paragraphs - Be brief and direct
-- YOU MUST USE PROPER LINE BREAKS - Each heading, bullet point, and section MUST be on a separate line
-- YOU MUST NOT put multiple items on one line - each bullet point gets its own line
-- YOU MUST add blank lines between sections for readability
-- HEADINGS AND BULLETS MUST START AT THE BEGINNING OF THE LINE (no leading spaces before ## or •)
+CRITICAL RESPONSE RULES:
+1. ANSWER DIRECTLY - If asked for specific information (like CEO email), provide ONLY that information directly
+2. BE CONCISE - Maximum 2-3 sentences for simple questions, 4-5 bullet points for lists
+3. NO FLUFF - Skip introductions, skip explanations unless specifically asked
+4. USE PROPER FORMATTING - Each heading, bullet, and section on separate lines with blank lines between
+5. START HEADINGS AT LINE BEGINNING - No leading spaces before ##
+6. START BULLETS AT LINE BEGINNING - Then indent with 3 spaces
+
+FORMATTING REQUIREMENTS:
+- Headings: ## Heading Name (on its own line, blank line before and after)
+- Bullets:    • Item (each on separate line, indented 3 spaces)
+- Sections: Blank line between each section
+- Contact Info: Format with labels aligned
+
+DIRECT ANSWER EXAMPLES:
+Question: "What is CEO email?" or "CEO email?"
+Answer: CEO Email: info@propertyreply.com
+
+Question: "What services do you provide?"
+Answer: 
+## Core Services
+
+## 1. Instant Lead Response (24/7)
+   • Reply to leads instantly — 24/7
+   • Never miss an enquiry
+
+## 2. Lead Qualification & Filtering
+   • Filter serious buyers & sellers fast
+   • Qualify by budget, timeline, location
+
+IMPORTANT RULES:
+- If asked for SPECIFIC information (email, phone, CEO name, price), provide ONLY that information directly - NO extra text
+- If asked for a LIST (services, features), provide well-formatted list with proper line breaks
+- Keep responses SHORT and FOCUSED - maximum 2-3 sentences for simple questions
+- Use the exact format shown in examples above
+- NO introductions like "Here is..." or "I can help you with..." - just answer directly
 
 ================================================================================
 PROPERTYREPLY COMPANY INFORMATION
@@ -404,6 +460,14 @@ A: You can contact PropertyReply via:
    - Website: https://www.propertyreply.com
    - Business Hours: 10:00 AM - 20:00 PM (Monday-Sunday)
    - Response Time: Within 24 hours
+
+Q: What is the CEO email?
+Q: What is CEO email?
+Q: CEO email?
+Q: How to contact CEO?
+A: CEO Email: info@propertyreply.com
+CEO Name: Saqib Hussain
+Phone: +447878938733
 
 Q: Does PropertyReply integrate with CRM systems?
 A: Yes, PropertyReply offers seamless integration with popular UK estate agency CRM systems, allowing you to work with your existing workflows.
@@ -621,7 +685,7 @@ YOU MUST KEEP RESPONSES SHORT, FOCUSED, AND CONCISE:
 - Maximum 3-4 bullet points per service/feature
 - Focus on the most important information only
 
-EXAMPLE OF GOOD SHORT RESPONSE:
+EXAMPLE OF GOOD SHORT RESPONSE (COPY THIS EXACT FORMAT):
 ## Core Services
 
 ## 1. Instant Lead Response (24/7)
@@ -632,6 +696,15 @@ EXAMPLE OF GOOD SHORT RESPONSE:
 ## 2. Lead Qualification & Filtering
    • Filter serious buyers & sellers fast
    • Qualify by budget, timeline, location, and property type
+
+CRITICAL FORMATTING RULES:
+- NEVER break headings across lines (## Core Services NOT ## C\nore Services)
+- ALWAYS put heading text on the SAME LINE as ##
+- ALWAYS put each bullet point on a NEW LINE
+- ALWAYS add a BLANK LINE before each ## heading
+- ALWAYS add a BLANK LINE after each ## heading before content
+- NEVER put text on the same line as a heading
+- NEVER break words across lines
 
 REMEMBER: 
 1. You MUST use actual line breaks (newlines). Each heading, each bullet point, and each section must be on separate lines with proper spacing. 
