@@ -154,45 +154,48 @@ function formatChatbotResponse(text) {
   
   let formatted = text;
   
-  // Step 1: Fix headings that are crammed together on same line
-  // Pattern: ## Heading1 ## Heading2 -> separate them
+  // Step 1: Remove leading spaces from headings - they must start at line beginning
+  formatted = formatted.replace(/^\s+##/gm, '##');
+  
+  // Step 2: Fix text before headings (like "Core Services" before ##)
+  formatted = formatted.replace(/^([A-Z][a-z]+\s+[A-Z][a-z]+)\s*##/gm, '## $1');
+  formatted = formatted.replace(/^([A-Z][a-z]+)\s*##/gm, '## $1');
+  
+  // Step 3: Fix headings that are crammed together on same line
   formatted = formatted.replace(/##\s+([^#\n]+?)\s+##\s+/g, '## $1\n\n## ');
   
-  // Step 2: Ensure each ## heading is on its own line with spacing
+  // Step 4: Ensure each ## heading is on its own line with spacing before it
   formatted = formatted.replace(/([^\n])\s*##\s+/g, '$1\n\n## ');
-  formatted = formatted.replace(/##\s+([^\n]+?)([^\n•])/g, '## $1\n$2');
   
-  // Step 3: Fix bullet points - ensure each is on separate line
-  formatted = formatted.replace(/([^\n])\s*•\s*/g, '$1\n   • ');
-  formatted = formatted.replace(/^\s*•\s*/gm, '   • ');
-  formatted = formatted.replace(/\s+•\s+/g, '\n   • ');
+  // Step 5: Fix text that appears on same line as heading
+  formatted = formatted.replace(/##\s+([^\n]+?)([A-Za-z0-9])/g, '## $1\n$2');
   
-  // Step 4: Ensure numbered sections (## 1., ## 2., etc.) have proper breaks
+  // Step 6: Fix bullet points - ensure each is on separate line, starting at beginning
+  formatted = formatted.replace(/([^\n])\s*•\s*/g, '$1\n• ');
+  formatted = formatted.replace(/^\s*•\s*/gm, '• ');
+  formatted = formatted.replace(/\s+•\s+/g, '\n• ');
+  
+  // Step 7: Ensure numbered sections have proper breaks
   formatted = formatted.replace(/([^\n])##\s+(\d+\.)/g, '$1\n\n## $2');
   
-  // Step 5: Fix contact information formatting
-  formatted = formatted.replace(/(Email:|Phone:|Website:|Business Hours:|Response Time:)\s*/g, '\n$1       ');
-  
-  // Step 6: Ensure proper spacing - heading should have content after it
+  // Step 8: Ensure proper spacing between sections
   formatted = formatted.replace(/##\s+([^\n]+)\n\s*##/g, '## $1\n\n##');
   
-  // Step 7: Clean up multiple consecutive newlines (max 2)
+  // Step 9: Fix contact information formatting
+  formatted = formatted.replace(/(Email:|Phone:|Website:|Business Hours:|Response Time:)\s*/g, '\n$1       ');
+  
+  // Step 10: Clean up multiple consecutive newlines (max 2)
   formatted = formatted.replace(/\n{4,}/g, '\n\n\n');
-  
-  // Step 8: Ensure headings are properly formatted (no text immediately after ##)
-  formatted = formatted.replace(/##\s+([^\n]+?)([A-Za-z])/g, '## $1\n$2');
-  
-  // Step 9: Final cleanup - remove excessive spacing but keep structure
   formatted = formatted.replace(/\n{3,}/g, '\n\n');
   
-  // Step 10: Ensure each section is properly separated
-  formatted = formatted.replace(/(##\s+\d+\.\s+[^\n]+)\n([^•\n#])/g, '$1\n\n$2');
+  // Step 11: Ensure bullets are properly indented (3 spaces) and start clean
+  formatted = formatted.replace(/^•\s+/gm, '   • ');
   
-  // Step 11: Trim and clean
+  // Step 12: Final cleanup - ensure headings start at beginning, no leading spaces
+  formatted = formatted.replace(/^\s+##/gm, '##');
+  
+  // Step 13: Trim and ensure clean start
   formatted = formatted.trim();
-  
-  // Step 12: Ensure bullet lists have proper spacing
-  formatted = formatted.replace(/(   • [^\n]+)\n([^•\n#])/g, '$1\n\n$2');
   
   return formatted;
 }
@@ -239,9 +242,12 @@ CRITICAL INSTRUCTIONS:
 - You MUST NOT say you don't have access to information - you have ALL the information below
 - You MUST answer as PropertyReply's representative
 - You MUST be helpful, professional, and friendly
+- YOU MUST BE CONCISE AND FOCUSED - Keep responses short, clear, and to the point
+- YOU MUST NOT write long, detailed paragraphs - Be brief and direct
 - YOU MUST USE PROPER LINE BREAKS - Each heading, bullet point, and section MUST be on a separate line
 - YOU MUST NOT put multiple items on one line - each bullet point gets its own line
 - YOU MUST add blank lines between sections for readability
+- HEADINGS AND BULLETS MUST START AT THE BEGINNING OF THE LINE (no leading spaces before ## or •)
 
 ================================================================================
 PROPERTYREPLY COMPANY INFORMATION
@@ -602,7 +608,37 @@ EXAMPLE OF WHAT TO DO (CORRECT):
 YOUR RESPONSE MUST HAVE REAL NEWLINE CHARACTERS BETWEEN EVERY ELEMENT.
 DO NOT PUT MULTIPLE ITEMS ON ONE LINE. USE ACTUAL LINE BREAKS.
 
-REMEMBER: You MUST use actual line breaks (newlines). Each heading, each bullet point, and each section must be on separate lines with proper spacing. NEVER put multiple items on one line. Format your response exactly like the example above with real line breaks between every element.`;
+═══════════════════════════════════════════════════════════════════════════════
+RESPONSE LENGTH REQUIREMENTS - CRITICAL
+═══════════════════════════════════════════════════════════════════════════════
+
+YOU MUST KEEP RESPONSES SHORT, FOCUSED, AND CONCISE:
+- DO NOT write long, detailed paragraphs
+- DO NOT provide excessive explanations
+- DO provide direct, clear answers
+- DO list key points with bullet points
+- DO keep it brief and to the point
+- Maximum 3-4 bullet points per service/feature
+- Focus on the most important information only
+
+EXAMPLE OF GOOD SHORT RESPONSE:
+## Core Services
+
+## 1. Instant Lead Response (24/7)
+   • Reply to leads instantly — 24/7
+   • Never miss an enquiry
+   • Keep every enquiry warm, even after hours
+
+## 2. Lead Qualification & Filtering
+   • Filter serious buyers & sellers fast
+   • Qualify by budget, timeline, location, and property type
+
+REMEMBER: 
+1. You MUST use actual line breaks (newlines). Each heading, each bullet point, and each section must be on separate lines with proper spacing. 
+2. NEVER put multiple items on one line. 
+3. Format your response exactly like the example above with real line breaks between every element.
+4. KEEP RESPONSES SHORT AND FOCUSED - Do not write long paragraphs or excessive details.
+5. HEADINGS AND BULLETS MUST START AT THE BEGINNING OF THE LINE (no leading spaces before ## or •).`;
 
     // Call OpenAI API with system prompt
     const completion = await openai.chat.completions.create({
@@ -617,8 +653,8 @@ REMEMBER: You MUST use actual line breaks (newlines). Each heading, each bullet 
           content: question
         }
       ],
-      max_tokens: 1000,
-      temperature: 0.5
+      max_tokens: 600,
+      temperature: 0.3
     });
 
     let answer = completion.choices[0].message.content;
