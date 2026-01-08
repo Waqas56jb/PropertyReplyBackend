@@ -11,9 +11,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "env": {
-    "CEO_EMAIL": "@ceo_email",
-    "CEO_APP_PASSWORD": "@ceo_app_password"
-  }
+  ]
 }
