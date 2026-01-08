@@ -148,6 +148,55 @@ You can reply directly to this email to contact ${name} at ${email}.`
   }
 });
 
+// Function to format chatbot response with proper line breaks and structure
+function formatChatbotResponse(text) {
+  if (!text) return text;
+  
+  let formatted = text;
+  
+  // Step 1: Fix headings that are crammed together on same line
+  // Pattern: ## Heading1 ## Heading2 -> separate them
+  formatted = formatted.replace(/##\s+([^#\n]+?)\s+##\s+/g, '## $1\n\n## ');
+  
+  // Step 2: Ensure each ## heading is on its own line with spacing
+  formatted = formatted.replace(/([^\n])\s*##\s+/g, '$1\n\n## ');
+  formatted = formatted.replace(/##\s+([^\n]+?)([^\n•])/g, '## $1\n$2');
+  
+  // Step 3: Fix bullet points - ensure each is on separate line
+  formatted = formatted.replace(/([^\n])\s*•\s*/g, '$1\n   • ');
+  formatted = formatted.replace(/^\s*•\s*/gm, '   • ');
+  formatted = formatted.replace(/\s+•\s+/g, '\n   • ');
+  
+  // Step 4: Ensure numbered sections (## 1., ## 2., etc.) have proper breaks
+  formatted = formatted.replace(/([^\n])##\s+(\d+\.)/g, '$1\n\n## $2');
+  
+  // Step 5: Fix contact information formatting
+  formatted = formatted.replace(/(Email:|Phone:|Website:|Business Hours:|Response Time:)\s*/g, '\n$1       ');
+  
+  // Step 6: Ensure proper spacing - heading should have content after it
+  formatted = formatted.replace(/##\s+([^\n]+)\n\s*##/g, '## $1\n\n##');
+  
+  // Step 7: Clean up multiple consecutive newlines (max 2)
+  formatted = formatted.replace(/\n{4,}/g, '\n\n\n');
+  
+  // Step 8: Ensure headings are properly formatted (no text immediately after ##)
+  formatted = formatted.replace(/##\s+([^\n]+?)([A-Za-z])/g, '## $1\n$2');
+  
+  // Step 9: Final cleanup - remove excessive spacing but keep structure
+  formatted = formatted.replace(/\n{3,}/g, '\n\n');
+  
+  // Step 10: Ensure each section is properly separated
+  formatted = formatted.replace(/(##\s+\d+\.\s+[^\n]+)\n([^•\n#])/g, '$1\n\n$2');
+  
+  // Step 11: Trim and clean
+  formatted = formatted.trim();
+  
+  // Step 12: Ensure bullet lists have proper spacing
+  formatted = formatted.replace(/(   • [^\n]+)\n([^•\n#])/g, '$1\n\n$2');
+  
+  return formatted;
+}
+
 // OpenAI Chatbot API Endpoint
 app.post('/api/chatbot', async (req, res) => {
   console.log('=== POST /api/chatbot ENDPOINT HIT ===');
@@ -527,6 +576,32 @@ CRITICAL: Notice how:
 
 YOU MUST FORMAT ALL YOUR RESPONSES EXACTLY LIKE THIS EXAMPLE ABOVE.
 
+═══════════════════════════════════════════════════════════════════════════════
+FINAL FORMATTING INSTRUCTIONS - CRITICAL
+═══════════════════════════════════════════════════════════════════════════════
+
+YOU MUST:
+1. Press ENTER (newline) after EVERY heading (##)
+2. Press ENTER (newline) before EVERY heading (##)  
+3. Press ENTER (newline) after EVERY bullet point (•)
+4. Press ENTER (newline) before EVERY bullet point (•)
+5. NEVER put two headings on the same line
+6. NEVER put two bullet points on the same line
+7. ALWAYS use actual newline characters (\n) in your response
+
+EXAMPLE OF WHAT NOT TO DO (WRONG):
+## Core Services ## 1. Service Name • Item 1 • Item 2
+
+EXAMPLE OF WHAT TO DO (CORRECT):
+## Core Services
+
+## 1. Service Name
+   • Item 1
+   • Item 2
+
+YOUR RESPONSE MUST HAVE REAL NEWLINE CHARACTERS BETWEEN EVERY ELEMENT.
+DO NOT PUT MULTIPLE ITEMS ON ONE LINE. USE ACTUAL LINE BREAKS.
+
 REMEMBER: You MUST use actual line breaks (newlines). Each heading, each bullet point, and each section must be on separate lines with proper spacing. NEVER put multiple items on one line. Format your response exactly like the example above with real line breaks between every element.`;
 
     // Call OpenAI API with system prompt
@@ -549,11 +624,8 @@ REMEMBER: You MUST use actual line breaks (newlines). Each heading, each bullet 
     let answer = completion.choices[0].message.content;
     console.log('OpenAI response received, length:', answer.length);
     
-    // Ensure proper line breaks are preserved
-    // Replace any double spaces with single space, but keep newlines
-    answer = answer.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
-    // Ensure bullet points have proper spacing
-    answer = answer.replace(/(•)\s*/g, '   • '); // Ensure consistent bullet spacing
+    // Format the response to ensure proper structure
+    answer = formatChatbotResponse(answer);
     
     res.status(200).json({
       success: true,
