@@ -1,0 +1,29 @@
+{
+  "name": "propertyreply-backend",
+  "version": "1.0.0",
+  "description": "PropertyReply Contact Form API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "api",
+    "nodemailer",
+    "contact-form"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.22.1",
+    "nodemailer": "^6.10.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
