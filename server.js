@@ -226,7 +226,27 @@ function formatChatbotResponse(text) {
   formatted = formatted.replace(/##\s+([A-Z])\n([A-Z]+)/g, '## $1$2');
   formatted = formatted.replace(/##\s+([A-Z][a-z])\n([A-Z][a-z]+)/g, '## $1$2');
   
-  // Step 20: Trim and ensure clean start
+  // Step 20: Fix duplicate labels (like "CEO Email CEO Email:" -> remove duplicate)
+  // Pattern: "CEO Email CEO Email: info@..." -> "info@..." (for simple answers)
+  formatted = formatted.replace(/^(CEO Email|CEO Name|Phone|Email|Price|Website)\s+\1:\s*([^\n]+)$/gmi, '$2');
+  
+  // Pattern: "CEO Email CEO Email" (standalone) -> "CEO Email"
+  formatted = formatted.replace(/^(CEO Email|CEO Name|Phone|Email|Price|Website)\s+\1\s*$/gmi, '$1');
+  
+  // Pattern: "CEO Email CEO Email:" -> "CEO Email:"
+  formatted = formatted.replace(/(CEO Email|CEO Name|Phone|Email|Price|Website)\s+\1:\s*/gi, '$1: ');
+  
+  // Pattern: "CEO Email CEO Email " (with space) -> "CEO Email "
+  formatted = formatted.replace(/(CEO Email|CEO Name|Phone|Email|Price|Website)\s+\1\s+/gi, '$1 ');
+  
+  // Step 21: For simple one-line answers, if it starts with label and value, keep it simple
+  // If the entire response is just "Label: value", that's fine
+  // But if it's "Label Label: value", simplify to just "value" for direct questions
+  
+  // Step 22: Remove duplicate words at start of response
+  formatted = formatted.replace(/^(CEO Email|CEO Name|Phone|Email|Price|Website)\s+\1\s*:/gmi, '$1:');
+  
+  // Step 23: Trim and ensure clean start
   formatted = formatted.trim();
   
   return formatted;
@@ -325,9 +345,32 @@ RESPONSE RULES
 3. NO FLUFF - Skip introductions, skip explanations unless specifically asked
 4. USE THE FORMATTING PATTERN ABOVE - Follow it exactly
 
-DIRECT ANSWER EXAMPLES:
-Question: "What is CEO email?" or "CEO email?"
-Answer: CEO Email: info@propertyreply.com
+DIRECT ANSWER EXAMPLES - COPY THESE EXACT FORMATS:
+
+For SIMPLE questions asking for ONE piece of information, provide ONLY the value (NO labels, NO headings):
+
+Question: "What is CEO email?" or "CEO email?" or "what is ceo email"
+Answer: info@propertyreply.com
+
+Question: "What is the CEO name?" or "Who is the CEO?"
+Answer: Saqib Hussain
+
+Question: "What is the phone number?" or "Phone number?"
+Answer: +447878938733
+
+Question: "What is the price?" or "How much does it cost?"
+Answer: £99/month with £149 one-time setup fee
+
+Question: "What is the website?"
+Answer: https://www.propertyreply.com
+
+For questions asking for MULTIPLE pieces of information, use labels:
+
+Question: "How can I contact PropertyReply?"
+Answer:
+Email:               info@propertyreply.com
+Phone:               +447878938733
+Website:             https://www.propertyreply.com
 
 Question: "What services do you provide?"
 Answer: 
@@ -341,11 +384,17 @@ Answer:
    • Filter serious buyers & sellers fast
    • Qualify by budget, timeline, location
 
-IMPORTANT:
-- If asked for SPECIFIC information (email, phone, CEO name, price), provide ONLY that information directly - NO extra text
+CRITICAL RULES FOR DIRECT ANSWERS:
+- If asked for ONE SPECIFIC piece of information (email, phone, CEO name, price, website), provide ONLY the value - NO labels, NO headings, NO "CEO Email:" prefix, just the answer
+- For "what is CEO email?" or "CEO email?" → Answer: info@propertyreply.com (NOT "CEO Email: info@propertyreply.com" and NOT "CEO Email CEO Email: info@propertyreply.com")
+- For "what is CEO name?" or "CEO name?" → Answer: Saqib Hussain (NOT "CEO Name: Saqib Hussain")
+- For "what is phone?" or "phone number?" → Answer: +447878938733 (NOT "Phone: +447878938733")
+- For "what is price?" or "how much?" → Answer: £99/month with £149 one-time setup (NOT "Price: £99/month")
+- If asked for MULTIPLE pieces of information (like "contact information"), THEN use labels with proper formatting
 - If asked for a LIST (services, features), provide well-formatted list with proper line breaks using the pattern above
 - Keep responses SHORT and FOCUSED - maximum 2-3 sentences for simple questions
 - NO introductions like "Here is..." or "I can help you with..." - just answer directly
+- NO duplicate labels - NEVER say "CEO Email CEO Email:" - if you must use a label, say it ONCE: "CEO Email:"
 - NEVER break headings across lines - keep heading text on the SAME line as ##
 
 ================================================================================
