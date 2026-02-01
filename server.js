@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 // Email configuration
-const ceoEmail = process.env.CEO_EMAIL || 'info@propertyreply.com';
+const ceoEmail = process.env.CEO_EMAIL || 'Propertyreply1@gmail.com';
 const ceoAppPassword = process.env.CEO_APP_PASSWORD || 'ttnwkqnqwjqyrspz';
 
 // Create transporter
@@ -48,7 +48,7 @@ app.get('/', (req, res) => {
   res.json({ 
     success: true, 
     message: 'PropertyReply API is running',
-    endpoints: ['/api/contact', '/api/chatbot']
+    endpoints: ['/api/contact', '/api/chatbot', '/api/demo-request']
   });
 });
 
@@ -75,6 +75,15 @@ app.options('/api/contact', (req, res) => {
 
 app.options('/api/chatbot', (req, res) => {
   console.log('OPTIONS /api/chatbot - CORS preflight');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.status(200).end();
+});
+
+app.options('/api/demo-request', (req, res) => {
+  console.log('OPTIONS /api/demo-request - CORS preflight');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -143,7 +152,219 @@ You can reply directly to this email to contact ${name} at ${email}.`
     console.error('Error sending email:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to send message. Please try again later or contact us directly at info@propertyreply.com'
+      message: 'Failed to send message. Please try again later or contact us directly at Propertyreply1@gmail.com'
+    });
+  }
+});
+
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Helper function to format preferred time
+function formatPreferredTime(time) {
+  const timeMap = {
+    'morning': 'Morning (9am-12pm)',
+    'afternoon': 'Afternoon (12pm-5pm)',
+    'evening': 'Evening (5pm-8pm)',
+    'flexible': 'Flexible'
+  };
+  return timeMap[time] || time;
+}
+
+// Demo Request API Endpoint
+app.post('/api/demo-request', async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  try {
+    const {
+      agencyName,
+      contactName,
+      email,
+      phone,
+      position,
+      numberOfProperties,
+      currentSystem,
+      preferredTime,
+      requirements,
+      type
+    } = req.body;
+
+    // Validation - Required fields
+    if (!agencyName || !contactName || !email || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Agency name, contact name, email, and phone are required fields.'
+      });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.'
+      });
+    }
+
+    // Escape user inputs for HTML safety
+    const safeAgencyName = escapeHtml(agencyName);
+    const safeContactName = escapeHtml(contactName);
+    const safeEmail = escapeHtml(email);
+    const safePhone = escapeHtml(phone);
+    const safePosition = position ? escapeHtml(position) : '';
+    const safeNumberOfProperties = numberOfProperties ? escapeHtml(numberOfProperties) : '';
+    const safeCurrentSystem = currentSystem ? escapeHtml(currentSystem) : '';
+    const safeRequirements = requirements ? escapeHtml(requirements) : '';
+
+    // Build email HTML content
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
+          🎯 New Demo Request - PropertyReply
+        </h2>
+        
+        <div style="background-color: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="color: #1e293b; margin-top: 0; background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: white; padding: 12px; border-radius: 6px; margin: -20px -20px 20px -20px;">
+            Agency Information
+          </h3>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569; width: 150px;">Agency Name:</td>
+              <td style="padding: 10px 0; color: #1e293b; font-size: 16px;"><strong>${safeAgencyName}</strong></td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Contact Name:</td>
+              <td style="padding: 10px 0; color: #1e293b;">${safeContactName}</td>
+            </tr>
+            ${safePosition ? `
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Position:</td>
+              <td style="padding: 10px 0; color: #1e293b;">${safePosition}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Email:</td>
+              <td style="padding: 10px 0; color: #1e293b;">
+                <a href="mailto:${safeEmail}" style="color: #2563eb; text-decoration: none; font-weight: 500;">${safeEmail}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Phone:</td>
+              <td style="padding: 10px 0; color: #1e293b;">
+                <a href="tel:${safePhone.replace(/\s+/g, '')}" style="color: #2563eb; text-decoration: none; font-weight: 500;">${safePhone}</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        ${safeNumberOfProperties || safeCurrentSystem || preferredTime || safeRequirements ? `
+        <div style="background-color: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="color: #1e293b; margin-top: 0; background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: white; padding: 12px; border-radius: 6px; margin: -20px -20px 20px -20px;">
+            Additional Details
+          </h3>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            ${safeNumberOfProperties ? `
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569; width: 180px;">Number of Properties:</td>
+              <td style="padding: 10px 0; color: #1e293b;">${safeNumberOfProperties}</td>
+            </tr>
+            ` : ''}
+            ${safeCurrentSystem ? `
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Current System/CRM:</td>
+              <td style="padding: 10px 0; color: #1e293b;">${safeCurrentSystem}</td>
+            </tr>
+            ` : ''}
+            ${preferredTime ? `
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #475569;">Preferred Demo Time:</td>
+              <td style="padding: 10px 0; color: #1e293b;">${formatPreferredTime(preferredTime)}</td>
+            </tr>
+            ` : ''}
+          </table>
+          
+          ${safeRequirements ? `
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #1e293b; margin-top: 0; margin-bottom: 10px;">Requirements / Questions:</h4>
+            <p style="color: #475569; line-height: 1.6; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 6px;">${safeRequirements}</p>
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #2563eb; border-radius: 8px; font-size: 13px; color: #0c4a6e;">
+          <p style="margin: 0; font-weight: 600;">📧 Next Steps:</p>
+          <p style="margin: 5px 0 0 0;">Contact ${safeContactName} at <a href="mailto:${safeEmail}" style="color: #2563eb; text-decoration: none;">${safeEmail}</a> or <a href="tel:${safePhone.replace(/\s+/g, '')}" style="color: #2563eb; text-decoration: none;">${safePhone}</a> to schedule the demo.</p>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background-color: #f1f5f9; border-radius: 8px; font-size: 12px; color: #64748b;">
+          <p style="margin: 0;">This email was sent from the PropertyReply demo request form.</p>
+          <p style="margin: 5px 0 0 0;">You can reply directly to this email to contact ${safeContactName} at ${safeEmail}.</p>
+        </div>
+      </div>
+    `;
+
+    // Plain text version
+    const emailText = `
+New Demo Request - PropertyReply
+
+AGENCY INFORMATION:
+Agency Name: ${agencyName}
+Contact Name: ${contactName}
+${position ? `Position: ${position}` : ''}
+Email: ${email}
+Phone: ${phone}
+
+${numberOfProperties || currentSystem || preferredTime || requirements ? `
+ADDITIONAL DETAILS:
+${numberOfProperties ? `Number of Properties: ${numberOfProperties}` : ''}
+${currentSystem ? `Current System/CRM: ${currentSystem}` : ''}
+${preferredTime ? `Preferred Demo Time: ${formatPreferredTime(preferredTime)}` : ''}
+${requirements ? `\nRequirements/Questions:\n${requirements}` : ''}
+` : ''}
+
+---
+This email was sent from the PropertyReply demo request form.
+You can reply directly to this email to contact ${contactName} at ${email}.
+    `;
+
+    // Email content
+    const mailOptions = {
+      from: ceoEmail,
+      to: ceoEmail,
+      replyTo: email,
+      subject: `New Demo Request from ${agencyName} - PropertyReply`,
+      html: emailHtml,
+      text: emailText
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      success: true,
+      message: 'Your demo request has been submitted successfully. We\'ll contact you within 24 hours to schedule your demo.'
+    });
+
+  } catch (error) {
+    console.error('Error sending demo request email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit demo request. Please try again later or contact us directly at Propertyreply1@gmail.com'
     });
   }
 });
@@ -363,11 +584,11 @@ app.all('/api/contact', (req, res, next) => {
 // 404 handler for undefined routes - MUST be last
 app.use((req, res) => {
   console.log(`❌ 404 - ${req.method} ${req.path} NOT FOUND`);
-  console.log('Available routes:', ['GET /', 'POST /api/contact', 'POST /api/chatbot', 'OPTIONS /api/contact', 'OPTIONS /api/chatbot']);
+  console.log('Available routes:', ['GET /', 'POST /api/contact', 'POST /api/chatbot', 'POST /api/demo-request', 'OPTIONS /api/contact', 'OPTIONS /api/chatbot', 'OPTIONS /api/demo-request']);
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.path} not found`,
-    availableEndpoints: ['POST /api/contact', 'POST /api/chatbot']
+    availableEndpoints: ['POST /api/contact', 'POST /api/chatbot', 'POST /api/demo-request']
   });
 });
 
@@ -376,7 +597,7 @@ app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({
     success: false,
-    message: 'Failed to send message. Please try again later or contact us directly at info@propertyreply.com'
+    message: 'Failed to send message. Please try again later or contact us directly at Propertyreply1@gmail.com'
   });
 });
 
@@ -391,6 +612,7 @@ if (process.env.VERCEL) {
     console.log(`Server running on port ${PORT}`);
     console.log(`Contact API available at http://localhost:${PORT}/api/contact`);
     console.log(`Chatbot API available at http://localhost:${PORT}/api/chatbot`);
+    console.log(`Demo Request API available at http://localhost:${PORT}/api/demo-request`);
     console.log('✅ All routes registered successfully!');
   });
 }
